@@ -176,7 +176,8 @@ def calculate_user_statistics(task_file_path="task.txt", users_file="user.txt"):
                 user_stats[username] = {
                     "total": 0,
                     "completed": 0,
-                    "uncompleted": 0
+                    "uncompleted": 0,
+                    "overdue": 0
                 }
     except FileNotFoundError:
         return {}
@@ -205,6 +206,14 @@ def calculate_user_statistics(task_file_path="task.txt", users_file="user.txt"):
                     user_stats[assigned_user]["completed"] += 1
                 else:
                     user_stats[assigned_user]["uncompleted"] += 1
+                    due_date_str = parts[4]
+                    try:
+                        due_date = datetime.strptime(due_date_str, "%d %b %Y")
+                        today = datetime.today()
+                        if due_date < today:
+                            user_stats[assigned_user]["overdue"] += 1
+                    except ValueError:
+                     pass
     except FileNotFoundError:
         return {}
 
@@ -216,18 +225,43 @@ def generate_user_overview(task_file_path="task.txt", users_file="user.txt", rep
     if not user_stats:
         print("No user statistics available")
         return
-    
+
+    total_users = len(user_stats)
+    total_tasks = sum(stats['total'] for stats in user_stats.values())
+
     try:
         with open(report_file, "w") as report:
             report.write("+" * 60 + "\n")
             report.write("USER OVERVIEW REPORT\n")
             report.write("=" * 60 + "\n\n")
 
+            report.write(f"Total Number of users: {total_users}\n")
+            report.write(f"Total number of Tasks: {total_tasks}\n\n")
+
             for username, stats in user_stats.items():
                 report.write(f"Username: {username}\n")
                 report.write(f"Total Tasks Assigned: {stats['total']}\n")
-                report.write(f"Total Completed Tasks: {stats['completed']}\n")
-                report.write(f"Total Uncompleted Tasks: {stats['uncompleted']}\n\n")
+             
+
+                if total_tasks > 0:
+                    pct_of_total = (stats['total'] / total_tasks) * 100
+                else:
+                    pct_of_total = 0
+
+                report.write(f"percentage of Total Tasks: {pct_of_total :.2f}%\n")
+
+                if stats['total'] > 0:
+                    pct_completed = (stats['completed'] / stats['total']) * 100
+                    pct_uncompleted = (stats['uncompleted'] / stats['total']) * 100
+                    pct_overdue = (stats['overdue'] / stats['total']) * 100
+                else:
+                    pct_completed = 0
+                    pct_uncompleted = 0
+                    pct_overdue = 0
+
+                report.write(f"Percentage of Tasks Completed: {pct_completed:.2f}%\n")
+                report.write(f"Percentage of Tasks Pending: {pct_uncompleted:.2f}%\n")
+                report.write(f"Percentage of Tasks Overdue: {pct_overdue:.2f}%\n\n")
 
             report.write("+" * 60 + "\n")
 
